@@ -5,7 +5,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 
-def create_interactive_logit_lens(hidden_states, norm, lm_head, tokenizer, image, model_name, image_filename, prompt, save_folder = ".", image_size=336, patch_size=14, misc_text=""):
+def create_interactive_logit_lens(hidden_states, norm, lm_head, tokenizer, image, model_name, image_filename, prompt, save_folder = ".", image_size=336, patch_size=14, misc_text="", top_k=5):
     # Tokenize the prompt
     input_ids = tokenizer.encode(prompt)
     
@@ -37,14 +37,14 @@ def create_interactive_logit_lens(hidden_states, norm, lm_head, tokenizer, image
         # Get probabilities
         probs = torch.softmax(logits, dim=-1)
         
-        # Get top 5 tokens and their probabilities for each position
-        top_5_values, top_5_indices = torch.topk(probs, k=5, dim=-1)
+        # Get top k tokens and their probabilities for each position
+        top_k_values, top_k_indices = torch.topk(probs, k=top_k, dim=-1)
         
         layer_top_tokens = []
         for pos in range(sequence_length):
-            top_5_tokens = [tokenizer.decode(idx.item()) for idx in top_5_indices[0, pos]]
-            top_5_probs = [f"{prob.item():.4f}" for prob in top_5_values[0, pos]]
-            layer_top_tokens.append(list(zip(top_5_tokens, top_5_probs)))
+            top_k_tokens = [tokenizer.decode(idx.item()) for idx in top_k_indices[0, pos]]
+            top_k_probs = [f"{prob.item():.4f}" for prob in top_k_values[0, pos]]
+            layer_top_tokens.append(list(zip(top_k_tokens, top_k_probs)))
         
         all_top_tokens.append(layer_top_tokens)
     

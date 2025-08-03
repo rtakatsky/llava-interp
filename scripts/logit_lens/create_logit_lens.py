@@ -5,7 +5,7 @@ from PIL import Image
 from tqdm import tqdm
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-src_path = os.path.join(current_dir, '..', '..', 'src')
+src_path = os.path.join(current_dir, '..', '..')
 sys.path.append(src_path)
 
 from src.HookedLVLM import HookedLVLM
@@ -15,9 +15,9 @@ def is_image_file(filename):
     valid_extensions = ('.jpeg', '.jpg', '.png', '.JPEG', '.JPG', '.PNG')
     return filename.lower().endswith(valid_extensions)
 
-def process_images(image_folder, save_folder, device, quantize_type, num_images):
+def process_images(image_folder, save_folder, device, quantize_type, num_images, top_k, model_id):
     # Import Model
-    model = HookedLVLM(device=device, quantize=True, quantize_type=quantize_type)
+    model = HookedLVLM(model_id=model_id, device=device, quantize=True, quantize_type=quantize_type)
 
     # Load components needed for logit lens
     norm = model.model.language_model.model.norm
@@ -41,11 +41,13 @@ def process_images(image_folder, save_folder, device, quantize_type, num_images)
 
     # Run forward pass
     for image_path, image in tqdm(images.items()):
-        text_question = "Describe the image."
-        prompt = f"USER: <image>\n{text_question} ASSISTANT:"
+        # text_question = "Describe the image."
+        # prompt = f"USER: <image>\n{text_question} ASSISTANT:"
+        text_question = "Name this animal in one word."
+        prompt = f"USER: <image>\n{text_question} ASSISTANT:It is a"
 
         hidden_states = model.forward(image, prompt, output_hidden_states=True).hidden_states
-        create_interactive_logit_lens(hidden_states, norm, lm_head, tokenizer, image, model_name, image_path, prompt, save_folder)
+        create_interactive_logit_lens(hidden_states, norm, lm_head, tokenizer, image, model_name, image_path, prompt, save_folder, top_k=top_k)
 
 def main():
     parser = argparse.ArgumentParser(description="Process images using HookedLVLM model")
@@ -54,10 +56,12 @@ def main():
     parser.add_argument("--device", default="cuda:0", help="Device to run the model on")
     parser.add_argument("--quantize_type", default="fp16", help="Quantization type")
     parser.add_argument("--num_images", type=int, help="Number of images to process (optional)")
+    parser.add_argument("--top_k", type=int, default=15, help="Number of top tokens to show")
+    parser.add_argument("--model_id", default="llava-hf/llava-1.5-7b-hf", help="Model ID")
 
     args = parser.parse_args()
 
-    process_images(args.image_folder, args.save_folder, args.device, args.quantize_type, args.num_images)
+    process_images(args.image_folder, args.save_folder, args.device, args.quantize_type, args.num_images, args.top_k, args.model_id)
 
 if __name__ == "__main__":
     main()
